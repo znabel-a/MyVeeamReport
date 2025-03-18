@@ -11,4 +11,4 @@ See changelog within the main script for updates.
 This project is made with love for Powershell, Veeam, Virtualisation and automation.
 
 ## Contribution
-Thanks to Marco Horstmann for making an updated version available on github. 
+Thanks to [Marco Horstmann](https://github.com/marcohorstmann/MyVeeamReport) for making an updated version available on github. 
