@@ -1,4 +1,4 @@
-﻿#requires -Version 5.0
+#requires -Version 5.0
 <#
 
     .SYNOPSIS
@@ -36,11 +36,16 @@
 #>
 
 #region User-Variables
-. .\MyVeeamReport_config.ps1
+. .\VeeamReportv11_config.ps1
 #endregion
 
 #region VersionInfo
 $MVRversion = "12.0.0.4"
+
+# Version 12.0.0.4b RC - 2025-03-18
+# Added fix for v12 JobName convention (primary\secondary)
+# Added CC and BCC to email
+# Changed Repo Summary from GB to TB and without decimal as irellevant.
 
 # Version 12.0.0.4 MH - 2023-06-19
 # Added code for CSV generation for tasks
@@ -416,7 +421,7 @@ If ($allJobs) {
 # Get all File / NAS Backup Sessions
 $allFileSess = @()
 If ($allFileJobs) {
-  $allFileSess = Get-VBRNASBackupSession -Name *
+  $allFileSess = Get-VBRUnstructuredBackupSession -Name *
 }
 
 
@@ -494,14 +499,15 @@ If ($reportMode -eq "Monthly") {
 
 # Gather all Backup Sessions within timeframe
 $sessListBk = @($allSess | Where-Object {($_.EndTime -ge (Get-Date).AddHours(-$HourstoCheck) -or $_.CreationTime -ge (Get-Date).AddHours(-$HourstoCheck) -or $_.State -eq "Working") -and $_.JobType -eq "Backup"})
+
 If ($null -ne $backupJob -and $backupJob -ne "") {
   $allJobsBkTmp = @()
   $sessListBkTmp = @()
   $backupsBkTmp = @()
   Foreach ($bkJob in $backupJob) {
-    $allJobsBkTmp += $allJobsBk | Where-Object {$_.Name -like $bkJob}
+    $allJobsBkTmp  += $allJobsBk  | Where-Object {$_.Name -like $bkJob}
     $sessListBkTmp += $sessListBk | Where-Object {$_.JobName -like $bkJob}
-    $backupsBkTmp += $backupsBk | Where-Object {$_.JobName -like $bkJob}
+    $backupsBkTmp  += $backupsBk  | Where-Object {$_.JobName -like $bkJob}
   }
   $allJobsBk = $allJobsBkTmp | Sort-Object Id -Unique
   $sessListBk = $sessListBkTmp | Sort-Object Id -Unique
@@ -514,6 +520,7 @@ If ($onlyLastBk) {
     $sessListBk += $tempSessListBk | Where-Object {$_.Jobname -eq $job.name} | Sort-Object EndTime -Descending | Select-Object -First 1
   }
 }
+
 # Get Backup Session information
 $totalXferBk = 0
 $totalReadBk = 0
@@ -550,11 +557,11 @@ If ($onlyLastBk) {
   }
 }
 # Get Backup Session information
-$totalXferBk = 0
-$totalReadBk = 0
+$filetotalXferBk = 0
+$filetotalReadBk = 0
 
-$fileSessListBk | ForEach-Object {$totalXferBk += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 2))}
-$fileSessListBk | ForEach-Object {$totalReadBk += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 2))}
+$fileSessListBk | ForEach-Object {$filetotalXferBk += $([Math]::Round([Decimal]$_.Progress.TransferedSize/1GB, 2))}
+$fileSessListBk | ForEach-Object {$filetotalReadBk += $([Math]::Round([Decimal]$_.Progress.ReadSize/1GB, 2))}
 $successFileSessionsBk = @($fileSessListBk | Where-Object {$_.Result -eq "Success"})
 $warningFileSessionsBk = @($fileSessListBk | Where-Object {$_.Result -eq "Warning"})
 $failsFileSessionsBk = @($fileSessListBk | Where-Object {$_.Result -eq "Failed"})
@@ -609,7 +616,7 @@ If ($null -ne $bcopyJob -and $bcopyJob -ne "") {
   $backupsBcTmp = @()
   Foreach ($bcJob in $bcopyJob) {
     $allJobsBcTmp += $allJobsBc | Where-Object {$_.Name -like $bcJob}
-    $sessListBcTmp += $sessListBc | Where-Object {$_.JobName -like $bcJob}
+    $sessListBcTmp += $sessListBc | Where-Object {$_.JobName.split("\")[0] -like $bcJob} # JobName in v12 is a parent/child naming convention now.
     $backupsBcTmp += $backupsBc | Where-Object {$_.JobName -like $bcJob}
   }
   $allJobsBc = $allJobsBcTmp | Sort-Object Id -Unique
@@ -1465,8 +1472,9 @@ $bodyMultiJobs = $null
 If ($showMultiJobs) {
   $multiJobs = @(Get-MultiJob)
   If ($multiJobs.Count -gt 0) {
-    $bodyMultiJobs = $multiJobs | Sort-Object vCenter, Datacenter, Cluster, Name | Select-Object Name, vCenter, Datacenter, Cluster, Folder,
-      @{Name="Job Name"; Expression = {$_.JobName}} | ConvertTo-HTML -Fragment
+    $bodyMultiJobs = $multiJobs | Sort-Object vCenter, Datacenter, Cluster, Name | 
+        Select-Object Name, vCenter, Datacenter, Cluster, Folder,@{Name="Job Name"; Expression = {$_.JobName}} | 
+        ConvertTo-HTML -Fragment
     $bodyMultiJobs = $subHead01err + "VMs Backed Up by Multiple Jobs within RPO" + $subHead02 + $bodyMultiJobs
   }
 }
@@ -2451,7 +2459,18 @@ If ($showJobsBc) {
         @{Name="Last Result"; Expression = {If ($_.Info.LatestStatus -eq "None"){""}Else{$_.Info.LatestStatus}}}
     }
     $bodyJobsBc = $bodyJobsBc | Sort-Object "Next Run", "Job Name" | ConvertTo-HTML -Fragment
-    $bodyJobsBc = $subHead01 + "Backup Copy Job Status" + $subHead02 + $bodyJobsBc
+
+    If ($allJobsBc.Info.LatestStatus -like "Failure") {
+        $summaryBcHead = $subHead01err
+    } ElseIf ($allJobsBc.Info.LatestStatus -like "Warning") {
+        $summaryBcHead = $subHead01war
+    } ElseIf ($allJobsBc.Info.LatestStatus -like "Success") {
+        $summaryBcHead = $subHead01suc
+    } Else {
+        $summaryBcHead = $subHead01
+    }
+        
+    $bodyJobsBc = $summaryBcHead + "Backup Copy Job Status" + $subHead02 + $bodyJobsBc
   }
 }
 
@@ -2478,11 +2497,11 @@ If ($showAllSessBc) {
         @{Name="Start Time"; Expression = {$_.CreationTime}},
         @{Name="Stop Time"; Expression = {If ($_.EndTime -eq "1/1/1900 12:00:00 AM"){"-"} Else {$_.EndTime}}},
         @{Name="Duration (HH:MM:SS)"; Expression = {Get-Duration -ts $_.Progress.Duration}},
-        @{Name="Avg Speed (MB/s)"; Expression = {[Math]::Round($_.Info.Progress.AvgSpeed/1MB,2)}},
-        @{Name="Total (GB)"; Expression = {[Math]::Round($_.Info.Progress.ProcessedSize/1GB,2)}},
-        @{Name="Processed (GB)"; Expression = {[Math]::Round($_.Info.Progress.ProcessedUsedSize/1GB,2)}},
-        @{Name="Data Read (GB)"; Expression = {[Math]::Round($_.Info.Progress.ReadSize/1GB,2)}},
-        @{Name="Transferred (GB)"; Expression = {[Math]::Round($_.Info.Progress.TransferedSize/1GB,2)}},
+        @{Name="Avg Speed (MB/s)"; Expression = {[Math]::Round($_.Info.Progress.AvgSpeed/1MB,0)}},
+        @{Name="Total (GB)"; Expression = {[Math]::Round($_.Info.Progress.ProcessedSize/1GB,0)}},
+        @{Name="Processed (GB)"; Expression = {[Math]::Round($_.Info.Progress.ProcessedUsedSize/1GB,0)}},
+        @{Name="Data Read (GB)"; Expression = {[Math]::Round($_.Info.Progress.ReadSize/1GB,0)}},
+        @{Name="Transferred (GB)"; Expression = {[Math]::Round($_.Info.Progress.TransferedSize/1GB,0)}},
         @{Name="Dedupe"; Expression = {
           If ($_.Progress.ReadSize -eq 0) {0}
           Else {([string][Math]::Round($_.BackupStats.GetDedupeX(),1)) +"x"}}},
@@ -4080,10 +4099,10 @@ If ($showRepo) {
       @{Name="Max Tasks"; Expression = {$_.MaxTasks}},
       @{Name="Host"; Expression = {$_.RepoHost}},
       @{Name="Path"; Expression = {$_.Storepath}},
-      @{Name="Backups (GB)"; Expression = {$_.StorageBackup}},
-      @{Name="Other data (GB)"; Expression = {$_.StorageOther}},
-      @{Name="Free (GB)"; Expression = {$_.StorageFree}},
-      @{Name="Total (GB)"; Expression = {$_.StorageTotal}},
+      @{Name="Backups (TB)"; Expression = {[Math]::Round($_.StorageBackup/1024,0)}},
+      @{Name="Other data (TB)"; Expression = {[Math]::Round($_.StorageOther/1024,0)}},
+      @{Name="Free (TB)"; Expression = {[Math]::Round($_.StorageFree/1024,0)}},
+      @{Name="Total (TB)"; Expression = {[Math]::Round($_.StorageTotal/1024,0)}},
       @{Name="Free (%)"; Expression = {$_.FreePercentage}},
       @{Name="Status"; Expression = {
         If ($_.FreePercentage -lt $repoCritical) {"Critical"}
@@ -4301,7 +4320,7 @@ If ($bodyJobsSb + $bodyAllSessSb + $bodyAllTasksSb + $bodyRunningSb + $bodyTasks
   $htmlOutput += $HTMLbreak
 }
 
-$htmlOutput += $bodySummaryConfig + $bodyProxy + $bodyRepo + $bodySORepo + $bodyRepoPerms + $bodyReplica + $bodyServices + $bodyLicense + $footerObj
+$htmlOutput += $bodySummaryConfig + $bodyProxy + $bodyRepo + $bodySORepo + $bodyRepoPerms + $bodyReplica + $bodyServices + $bodyLicense # + $footerObj
 
 # Fix Details
 $htmlOutput = $htmlOutput.Replace("ZZbrZZ","<br />")
@@ -4347,6 +4366,8 @@ If ($sendEmail) {
   $smtp.EnableSsl = $emailEnableSSL
   $msg = New-Object System.Net.Mail.MailMessage($emailFrom, $emailTo)
   $msg.Subject = $emailSubject
+  if ( $emailCC ) { $msg.CC.Add($emailCC) }
+  if ( $emailBCC ) { $msg.BCC.Add($emailBCC) }
   If ($emailAttach) {
     $body = "Veeam Report Attached"
     $msg.Body = $body
