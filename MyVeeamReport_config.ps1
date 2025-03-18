@@ -61,6 +61,8 @@ $emailUser = ""
 $emailPass = ""
 $emailFrom = "MyVeeamReport@yourdomain.com"
 $emailTo = "you@youremail.com"
+$emailCC = ""
+$emailBCC = ""
 # Send HTML report as attachment (else HTML report is body)
 $emailAttach = $false
 # Email Subject 
