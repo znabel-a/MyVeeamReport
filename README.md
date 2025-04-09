@@ -7,6 +7,13 @@ Tested under Hyper-V with Veeam v12. Added additional configuration for sending 
 ## What’s New
 See changelog within the main script for updates.
 
+## Download
+You can download the installer with the following oneliner:
+
+```Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/znabel-a/MyVeeamReport/refs/heads/main/Install.ps1 -OutFile c:\temp\install.ps1```
+
+Edit the install.ps1 file to suit your needs.
+
 ## Disclaimer
 This project is made with love for Powershell, Veeam, Virtualisation and automation.
 
