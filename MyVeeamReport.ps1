@@ -36,11 +36,14 @@
 #>
 
 #region User-Variables
-. .\VeeamReportv11_config.ps1
+. .\MyVeeamReport_config.ps1
 #endregion
 
 #region VersionInfo
-$MVRversion = "12.0.0.4"
+$MVRversion = "12.0.0.4c"
+
+# Version 12.0.0.4c RC - 2025-05-08
+# Added Cloud Repository definition
 
 # Version 12.0.0.4b RC - 2025-03-18
 # Added fix for v12 JobName convention (primary\secondary)
@@ -863,6 +866,7 @@ Function Get-VBRRepoInfo {
         "ExaGrid" {"ExaGrid"}
         "HPStoreOnce" {"HP StoreOnce"}
         "Nfs" {"NFS Direct"}
+        "Cloud" {"Cloud Repository"}
         default {"Unknown"}
       }
       $outputObj = Build-Object $r.Name $($r.GetHost()).Name.ToLower() $r.Path $r.GetContainer().CachedFreeSpace.InBytes $r.GetContainer().CachedTotalSpace.InBytes $r.Options.MaxTaskCount $rType
