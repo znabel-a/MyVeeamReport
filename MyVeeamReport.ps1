@@ -36,8 +36,12 @@
 #>
 
 #region User-Variables
-. .\MyVeeamReport_config.ps1
-Import-Module (Join-Path $PSScriptRoot "src/MyVeeamReport/MyVeeamReport.psm1")
+Import-Module "$PSScriptRoot\MyVeeamReportConfig.psm1"
+$config = Get-MyVeeamReportConfig
+foreach ($key in $config.Keys) {
+    Set-Variable -Name $key -Value $config[$key] -Scope Script
+}
+
 #endregion
 
 #region VersionInfo
