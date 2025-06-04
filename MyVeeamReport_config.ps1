@@ -30,8 +30,12 @@ $rptWidth = 97
 # HTML Table Odd Row color
 $oddColor = "#f0f0f0"
 
-# Location of Veeam Core dll  
-$VeeamCorePath = "C:\Program Files\Veeam\Backup and Replication\Backup\Veeam.Backup.Core.dll"
+# Location of Veeam Core dll
+# Updated path for VBR v13. Older versions (v11/v12) still use the
+# "Backup and Replication" directory. Uncomment the next line if you
+# are running an older release.
+$VeeamCorePath = "C:\Program Files\Veeam\Veeam Backup and Replication\Backup\Veeam.Backup.Core.dll"
+#$VeeamCorePath = "C:\Program Files\Veeam\Backup and Replication\Backup\Veeam.Backup.Core.dll"
 #If you are connect remotely to VBR server you need to use another console.
 #$VeeamCorePath = "C:\Program Files\Veeam\Backup and Replication\Console\Veeam.Backup.Core.dll"
 

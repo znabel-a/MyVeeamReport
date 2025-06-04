@@ -619,7 +619,14 @@ If ($null -ne $bcopyJob -and $bcopyJob -ne "") {
   $backupsBcTmp = @()
   Foreach ($bcJob in $bcopyJob) {
     $allJobsBcTmp += $allJobsBc | Where-Object {$_.Name -like $bcJob}
-    $sessListBcTmp += $sessListBc | Where-Object {$_.JobName.split("\")[0] -like $bcJob} # JobName in v12 is a parent/child naming convention now.
+    $sessListBcTmp += $sessListBc | Where-Object {
+        $jn = $_.JobName
+        if ($objectVersion.VeeamVersion -ge 12.0) {
+            if ($jn -match '\\') { $jn = $jn.Split('\\')[0] }
+            elseif ($jn -match ':') { $jn = $jn.Split(':')[0] }
+        }
+        $jn -like $bcJob
+    }
     $backupsBcTmp += $backupsBc | Where-Object {$_.JobName -like $bcJob}
   }
   $allJobsBc = $allJobsBcTmp | Sort-Object Id -Unique
@@ -1276,6 +1283,9 @@ $objectVersion = Get-VeeamVersion
 If ($objectVersion.VeeamVersion -lt 11.0) {
   Write-Host "Script requires VBR v11.0 or higher" -ForegroundColor Red
   exit
+}
+If ($objectVersion.VeeamVersion -gt 13.0) {
+  Write-Warning "Detected VBR version $($objectVersion.productVersion). This script was tested up to v13. Results may be unpredictable."
 }
 
 

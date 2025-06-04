@@ -1,8 +1,8 @@
 
-# MyVeeam Report for Veeam Backup & Replication v11a and v12
+# MyVeeam Report for Veeam Backup & Replication v11a, v12 and v13
 Original script taken from Marco Horstmann Repo, as I needed some automation that could send out reports without having to spin up Veeam One for a small environment.
 
-Tested under Hyper-V with Veeam v12. Added additional configuration for sending emails, so that I could include CC and BCC emails.
+Tested under Hyper-V with Veeam v12 and basic validation performed with v13. Added additional configuration for sending emails, so that I could include CC and BCC emails.
 
 ## What’s New
 See changelog within the main script for updates.
