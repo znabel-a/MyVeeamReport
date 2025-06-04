@@ -14,12 +14,12 @@
 
 # Customize to your requirements...
 $Script   = "C:\Temp\MyVeeamReport.ps1"
-$Config   = "C:\Temp\MyVeeamReport_config.ps1"
+$Config   = "C:\Temp\MyVeeamReport_config.psd1"
 $Schedule = "C:\Temp\Schedule.ps1"
 
 
 $URL_Script   = "https://raw.githubusercontent.com/znabel-a/MyVeeamReport/main/MyVeeamReport.ps1"
-$URL_Config   = "https://raw.githubusercontent.com/znabel-a/MyVeeamReport/main/MyVeeamReport_config.ps1"
+$URL_Config   = "https://raw.githubusercontent.com/znabel-a/MyVeeamReport/main/MyVeeamReport_config.psd1"
 $URL_Schedule = "https://raw.githubusercontent.com/znabel-a/MyVeeamReport/main/Schedule.ps1"
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

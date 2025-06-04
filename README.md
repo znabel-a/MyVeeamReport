@@ -14,6 +14,14 @@ You can download the installer with the following oneliner:
 
 Edit the install.ps1 file to suit your needs.
 
+## Configuration
+The script now loads settings from `MyVeeamReport_config.psd1`. This file
+contains a PowerShell hashtable with all configurable options. Default values
+are provided in the repository. To override any setting, edit the PSData file
+and modify the corresponding key. You can supply an alternative configuration
+path by calling `Get-MyVeeamReportConfig -Path <file>` before running the main
+script.
+
 ## Disclaimer
 This project is made with love for Powershell, Veeam, Virtualisation and automation.
 
