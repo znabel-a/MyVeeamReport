@@ -41,6 +41,7 @@ $config = Get-MyVeeamReportConfig
 foreach ($key in $config.Keys) {
     Set-Variable -Name $key -Value $config[$key] -Scope Script
 }
+
 #endregion
 
 #region VersionInfo
@@ -1487,42 +1488,8 @@ If ($showMultiJobs) {
   }
 }
 
-# Get Backup Summary Info
-$bodySummaryBk = $null
-If ($showSummaryBk) {
-  $vbrMasterHash = @{
-    "Failed" = @($failedSessionsBk).Count
-    "Sessions" = If ($sessListBk) {@($sessListBk).Count} Else {0}
-    "Read" = $totalReadBk
-    "Transferred" = $totalXferBk
-    "Successful" = @($successSessionsBk).Count
-    "Warning" = @($warningSessionsBk).Count
-    "Fails" = @($failsSessionsBk).Count
-    "Running" = @($runningSessionsBk).Count
-  }
-  $vbrMasterObj = New-Object -TypeName PSObject -Property $vbrMasterHash
-  If ($onlyLastBk) {
-    $total = "Jobs Run"
-  } Else {
-    $total = "Total Sessions"
-  }
-  $arrSummaryBk =  $vbrMasterObj | Select-Object @{Name=$total; Expression = {$_.Sessions}},
-    @{Name="Read (GB)"; Expression = {$_.Read}}, @{Name="Transferred (GB)"; Expression = {$_.Transferred}},
-    @{Name="Running"; Expression = {$_.Running}}, @{Name="Successful"; Expression = {$_.Successful}},
-    @{Name="Warnings"; Expression = {$_.Warning}}, @{Name="Failures"; Expression = {$_.Fails}},
-    @{Name="Failed"; Expression = {$_.Failed}}
-  $bodySummaryBk = $arrSummaryBk | ConvertTo-HTML -Fragment
-  If ($arrSummaryBk.Failed -gt 0) {
-      $summaryBkHead = $subHead01err
-  } ElseIf ($arrSummaryBk.Warnings -gt 0) {
-      $summaryBkHead = $subHead01war
-  } ElseIf ($arrSummaryBk.Successful -gt 0) {
-      $summaryBkHead = $subHead01suc
-  } Else {
-      $summaryBkHead = $subHead01
-  }
-  $bodySummaryBk = $summaryBkHead + "Backup Results Summary" + $subHead02 + $bodySummaryBk
-}
+# Get Backup Summary
+$bodySummaryBk = Get-BackupSummarySection
 
 # Get Backup Job Status
 $bodyJobsBk = $null
@@ -2880,43 +2847,8 @@ If ($showTaskSuccessBc) {
   }
 }
 
-# Get Tape Backup Summary Info
-$bodySummaryTp = $null
-If ($showSummaryTp) {
-  $vbrMasterHash = @{
-    "Sessions" = If ($sessListTp) {@($sessListTp).Count} Else {0}
-    "Read" = $totalReadTp
-    "Transferred" = $totalXferTp
-    "Successful" = @($successSessionsTp).Count
-    "Warning" = @($warningSessionsTp).Count
-    "Fails" = @($failsSessionsTp).Count
-    "Working" = @($workingSessionsTp).Count
-    "Idle" = @($idleSessionsTp).Count
-    "Waiting" = @($waitingSessionsTp).Count
-  }
-  $vbrMasterObj = New-Object -TypeName PSObject -Property $vbrMasterHash
-  If ($onlyLastTp) {
-    $total = "Jobs Run"
-  } Else {
-    $total = "Total Sessions"
-  }
-  $arrSummaryTp =  $vbrMasterObj | Select-Object @{Name=$total; Expression = {$_.Sessions}},
-    @{Name="Read (GB)"; Expression = {$_.Read}}, @{Name="Transferred (GB)"; Expression = {$_.Transferred}},
-    @{Name="Idle"; Expression = {$_.Idle}}, @{Name="Waiting"; Expression = {$_.Waiting}},
-    @{Name="Working"; Expression = {$_.Working}}, @{Name="Successful"; Expression = {$_.Successful}},
-    @{Name="Warnings"; Expression = {$_.Warning}}, @{Name="Failures"; Expression = {$_.Fails}}
-  $bodySummaryTp = $arrSummaryTp | ConvertTo-HTML -Fragment
-  If ($arrSummaryTp.Failures -gt 0) {
-      $summaryTpHead = $subHead01err
-  } ElseIf ($arrSummaryTp.Warnings -gt 0 -or $arrSummaryTp.Waiting -gt 0) {
-      $summaryTpHead = $subHead01war
-  } ElseIf ($arrSummaryTp.Successful -gt 0) {
-      $summaryTpHead = $subHead01suc
-  } Else {
-      $summaryTpHead = $subHead01
-  }
-  $bodySummaryTp = $summaryTpHead + "Tape Backup Results Summary" + $subHead02 + $bodySummaryTp
-}
+# Get Tape Backup Summary
+$bodySummaryTp = Get-TapeSummarySection
 
 # Get Tape Backup Job Status
 $bodyJobsTp = $null
@@ -4077,107 +4009,9 @@ If ($showSummaryConfig) {
   $bodySummaryConfig = $configHead + "Configuration Backup Status" + $subHead02 + $bodySummaryConfig
 }
 
-# Get Proxy Info
-$bodyProxy = $null
-If ($showProxy) {
-  If ($proxyList.count -gt 0) {
-    $arrProxy = $proxyList | Get-VBRProxyInfo | Select-Object @{Name="Proxy Name"; Expression = {$_.ProxyName}},
-      @{Name="Transport Mode"; Expression = {$_.tMode}}, @{Name="Max Tasks"; Expression = {$_.MaxTasks}},
-      @{Name="Proxy Host"; Expression = {$_.RealName}}, @{Name="Host Type"; Expression = {$_.pType}},
-      Enabled, @{Name="IP Address"; Expression = {$_.IP}},
-      @{Name="RT (ms)"; Expression = {$_.Response}}, Status
-    $bodyProxy = $arrProxy | Sort-Object "Proxy Host" |  ConvertTo-HTML -Fragment
-    If ($arrProxy.Status -match "Dead") {
-      $proxyHead = $subHead01err
-    } ElseIf ($arrProxy -match "Alive") {
-      $proxyHead = $subHead01suc
-    } Else {
-      $proxyHead = $subHead01
-    }
-    $bodyProxy = $proxyHead + "Proxy Details" + $subHead02 + $bodyProxy
-  }
-}
-
-# Get Repository Info
-$bodyRepo = $null
-If ($showRepo) {
-  If ($repoList.count -gt 0) {
-    $arrRepo = $repoList | Get-VBRRepoInfo | Select-Object @{Name="Repository Name"; Expression = {$_.Target}},
-      @{Name="Type"; Expression = {$_.rType}},
-      @{Name="Max Tasks"; Expression = {$_.MaxTasks}},
-      @{Name="Host"; Expression = {$_.RepoHost}},
-      @{Name="Path"; Expression = {$_.Storepath}},
-      @{Name="Backups (TB)"; Expression = {[Math]::Round($_.StorageBackup/1024,0)}},
-      @{Name="Other data (TB)"; Expression = {[Math]::Round($_.StorageOther/1024,0)}},
-      @{Name="Free (TB)"; Expression = {[Math]::Round($_.StorageFree/1024,0)}},
-      @{Name="Total (TB)"; Expression = {[Math]::Round($_.StorageTotal/1024,0)}},
-      @{Name="Free (%)"; Expression = {$_.FreePercentage}},
-      @{Name="Status"; Expression = {
-        If ($_.FreePercentage -lt $repoCritical) {"Critical"}
-        ElseIf ($_.StorageTotal -eq 0 -and $_.rtype -ne "SAN Snapshot")  {"Warning"}
-        ElseIf ($_.StorageTotal -eq 0) {"NoData"}
-        ElseIf ($_.FreePercentage -lt $repoWarn) {"Warning"}
-        ElseIf ($_.FreePercentage -eq "Unknown") {"Unknown"}
-        Else {"OK"}}
-      }
-    $bodyRepo = $arrRepo | Sort-Object "Repository Name" | ConvertTo-HTML -Fragment
-    If ($arrRepo.status -match "Critical") {
-      $repoHead = $subHead01err
-    } ElseIf ($arrRepo.status -match "Warning|Unknown") {
-      $repoHead = $subHead01war
-    } ElseIf ($arrRepo.status -match "OK|NoData") {
-      $repoHead = $subHead01suc
-    } Else {
-      $repoHead = $subHead01
-    }
-    $bodyRepo = $repoHead + "Repository Details" + $subHead02 + $bodyRepo
-  }
-}
-# Get Scale Out Repository Info
-$bodySORepo = $null
-If ($showRepo) {
-  If ($repoListSo.count -gt 0) {
-    $arrSORepo = $repoListSo | Get-VBRSORepoInfo | Select-Object @{Name="Scale Out Repository Name"; Expression = {$_.SOTarget}},
-      @{Name="Member Name"; Expression = {$_.Target}},
-	  @{Name="Type"; Expression = {$_.rType}},
-      @{Name="Max Tasks"; Expression = {$_.MaxTasks}},
-	  @{Name="Host"; Expression = {$_.RepoHost}},
-      @{Name="Path"; Expression = {$_.Storepath}},
-      @{Name="Backups (GB)"; Expression = {$_.StorageBackup}},
-      @{Name="Other data (GB)"; Expression = {$_.StorageOther}},
-	  @{Name="Free (GB)"; Expression = {$_.StorageFree}},
-      @{Name="Total (GB)"; Expression = {$_.StorageTotal}},
-	  @{Name="Free (%)"; Expression = {$_.FreePercentage}},
-      @{Name="Status"; Expression = {
-        If ($_.FreePercentage -lt $repoCritical) {"Critical"}
-        ElseIf ($_.StorageTotal -eq 0)  {"Warning"}
-        ElseIf ($_.FreePercentage -lt $repoWarn) {"Warning"}
-        ElseIf ($_.FreePercentage -eq "Unknown") {"Unknown"}
-        Else {"OK"}}
-
-      }
-    $bodySORepo = $arrSORepo | Sort-Object "Scale Out Repository Name", "Member Repository Name" | ConvertTo-HTML -Fragment
-    If ($arrSORepo.status -match "Critical") {
-      $sorepoHead = $subHead01err
-    } ElseIf ($arrSORepo.status -match "Warning|Unknown") {
-      $sorepoHead = $subHead01war
-    } ElseIf ($arrSORepo.status -match "OK") {
-      $sorepoHead = $subHead01suc
-    } Else {
-      $sorepoHead = $subHead01
-    }
-    $bodySORepo = $sorepoHead + "Scale Out Repository Details" + $subHead02 + $bodySORepo
-  }
-}
-
-# Get Repository Agent User Permissions
-$bodyRepoPerms = $null
-If ($showRepoPerms){
-  If ($repoList.count -gt 0 -or $repoListSo.count -gt 0) {
-    $bodyRepoPerms = Get-RepoPermission | Select-Object Name, "Encryption Enabled", "Permission Type", Users | Sort-Object Name | ConvertTo-HTML -Fragment
-    $bodyRepoPerms = $subHead01 + "Repository Permissions for Agent Jobs" + $subHead02 + $bodyRepoPerms
-  }
-}
+# Get Proxy and Repository Info
+$bodyProxy = Get-ProxyInfoSection
+$bodyRepo, $bodySORepo, $bodyRepoPerms = Get-RepositoryInfoSection
 
 # Get Replica Target Info
 $bodyReplica = $null
